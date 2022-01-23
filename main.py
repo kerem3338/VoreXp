@@ -6,17 +6,27 @@ import threading
 import json
 from pathlib import Path
 import getpass
-import wget
+try:
+  import wget
+except ModuleNotFoundError:
+  print("Python 'wget' modülü bulunamdı. Bu yüzden komutlar indirilemeyecek.")
+
+import shutil
 from zipfile import ZipFile
+
+
 start=datetime.datetime.now()
 
 class Tasks:
   def __init__(self):
     self._tasks={}
+
   def new_task(self,taskname):
     self._tasks[taskname]={"runner":getpass.getuser()}
+
   def tasks(self):
     return self._tasks
+
 class Errors:
   def __init__(self):
     self._errors={
@@ -46,8 +56,14 @@ def onay(evet,hayir):
     return False
   else:
     return None
+
 Errors=Errors()
 Tasks=Tasks()
+
+if not os.path.exists("config.json"):
+  with open("config.json","w",encoding="utf8") as f:
+    json.dump({"ilk":"ilk"},f)
+
 try:
   with open("config.json","r+") as f:
     config=json.load(f)
@@ -59,13 +75,14 @@ try:
         json.dump(config,f)
         print("""Vore Xp 2022
 [Bilgi] İlk giriş tespit edildi
+[Bilgi] Kurulum Başlatılıyor...
 
-Kurulum)""")
+Kurulum""")
     
         ad=str(input("Kullanıcı Adı:"))
         cihaz=str(input("Cihaz Adı:"))
 
-        kul_json={"ad":ad,"cihaz":cihaz}
+        kul_json={"ad":ad,"cihaz":cihaz,"yetki":"env"}
 
         if os.path.isdir(os.getcwd()+"/vore"):
           Errors.error("004", "Vore Klasörü Zaten Bulunuyor")
@@ -100,15 +117,18 @@ Kurulum)""")
         if girdi == "1":
           print("Komutlar İndiriliyor")
 
-          wget.download("https://raw.githubusercontent.com/dios-project/joker/master/komutlar.zip","vore/commands/commands.zip")
+          wget.download("https://raw.githubusercontent.com/dios-project/VoreXp-depo/master/commands.zip","vore/commands/commands.zip")
 
           
           
           with ZipFile('vore/commands/commands.zip') as fileobj:
             fileobj.extractall(os.getcwd()+"/vore/commands/")
-          
-          
+
           os.remove("vore/commands/commands.zip")
+        else:
+          print("Kurulum Komutlar indirilmeden tamamlandı.")
+          
+          
     except KeyError:
       pass
     
@@ -138,11 +158,11 @@ for x in range(len(kullanicilar_list)):
 
 
 
-vore_config={"runuser":"root","started":start,"platform":os.name}
+vore_config={"runuser":"root","started":start,"platform":os.name,"vorepath":os.getcwd()+"/vore","commandspath": os.getcwd()+"/vore/commands/"}
 try:
   kul=int(input("kullanici>"))
 except ValueError:
-  print("Sadece sayı giriniz.")
+  print("Geçersiz Giriş!")
   sys.exit()
 if kul in list(kullanicilar.keys()):
   vore_config["runuser"]=kullanicilar[kul]
@@ -159,6 +179,19 @@ while True:
     print("Exited")
     sys.exit()
   
+  if command=="service-reset":
+    print("""VoreXp Servisi Sıfırlama Kaldırma Aracı
+
+By işlemi Gerçekleştirmek istiyor musunuz? (Bütün Kullanıcılar ve komutlar silinecek)""")
+    b=onay("evet, vorexp sıfırlansın","hayır, vorexp sıfırlanmasın")
+    if b:
+      shutil.rmtree("vore")
+      with open("config.json","r+",encoding="utf8") as f:
+        f.seek(0)
+        f.truncate()
+        config["ilk"]="ilk"
+        json.dump(config,f)
+      sys.exit()
   if command=="":
     pass
   
@@ -176,3 +209,5 @@ while True:
       Errors.error("007",f"komut '{command.split()[0]}' bulunamadı")
   except IndexError:
     pass
+
+#Son satır XD
