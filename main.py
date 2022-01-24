@@ -16,7 +16,7 @@ from zipfile import ZipFile
 
 
 start=datetime.datetime.now()
-
+v_path=os.getcwd()+"/vore"
 class Tasks:
   def __init__(self):
     self._tasks={}
@@ -36,7 +36,8 @@ class Errors:
       "004": "Klasör Zaten Var",
       "005": "Argüman Hatası",
       "006": "Komut fonksiyonu bulunamadı",
-      "007": "Komut Bulunamadı"
+      "007": "Komut Bulunamadı",
+      "008": "Görev Yanıt vermiyor."
     }
 
   def error(self,errcode,message="",err=None):
@@ -82,7 +83,7 @@ Kurulum""")
         ad=str(input("Kullanıcı Adı:"))
         cihaz=str(input("Cihaz Adı:"))
 
-        kul_json={"ad":ad,"cihaz":cihaz,"yetki":"env"}
+        kul_json={"ad":ad,"cihaz":cihaz,"yetki":"exc"}
 
         if os.path.isdir(os.getcwd()+"/vore"):
           Errors.error("004", "Vore Klasörü Zaten Bulunuyor")
@@ -102,7 +103,7 @@ Kurulum""")
           os.system(f"mkdir vore && touch vore/config.json && mkdir vore/users && mkdir vore/users/{ad} && mkdir vore/commands")
         
         try:
-          with open("vore/config.json","w",encoding="utf8") as f:
+          with open(v_path+"/config.json","w",encoding="utf8") as f:
             json.dump(kul_json,f)
           
         except FileNotFoundError:
@@ -121,10 +122,10 @@ Kurulum""")
 
           
           
-          with ZipFile('vore/commands/commands.zip') as fileobj:
+          with ZipFile(v_path+'/commands/commands.zip') as fileobj:
             fileobj.extractall(os.getcwd()+"/vore/commands/")
 
-          os.remove("vore/commands/commands.zip")
+          os.remove(v_path+"/commands/commands.zip")
         else:
           print("Kurulum Komutlar indirilmeden tamamlandı.")
           
@@ -159,6 +160,8 @@ for x in range(len(kullanicilar_list)):
 
 
 vore_config={"runuser":"root","started":start,"platform":os.name,"vorepath":os.getcwd()+"/vore","commandspath": os.getcwd()+"/vore/commands/"}
+
+sys.path.append(vore_config["commandspath"])
 try:
   kul=int(input("kullanici>"))
 except ValueError:
@@ -168,6 +171,7 @@ if kul in list(kullanicilar.keys()):
   vore_config["runuser"]=kullanicilar[kul]
 else:
   print("User Not Found")
+  sys.exit()
 print(f"""Vore Xp 2022
 
 Hoşgeldin, {vore_config["runuser"]}""")
@@ -185,8 +189,8 @@ while True:
 By işlemi Gerçekleştirmek istiyor musunuz? (Bütün Kullanıcılar ve komutlar silinecek)""")
     b=onay("evet, vorexp sıfırlansın","hayır, vorexp sıfırlanmasın")
     if b:
-      shutil.rmtree("vore")
-      with open("config.json","r+",encoding="utf8") as f:
+      shutil.rmtree(v_path)
+      with open(v_path+"/config.json","r+",encoding="utf8") as f:
         f.seek(0)
         f.truncate()
         config["ilk"]="ilk"
@@ -196,9 +200,8 @@ By işlemi Gerçekleştirmek istiyor musunuz? (Bütün Kullanıcılar ve komutla
     pass
   
   try:
-    if command.split()[0]+".py" in os.listdir("vore/commands/"):
+    if command.split()[0]+".py" in os.listdir(vore_config["commandspath"]):
       args=command.split()[1::]
-      sys.path.append("vore/commands")
       command_import=__import__(command.split()[0])
       command_import.vore_config=vore_config
       try:
