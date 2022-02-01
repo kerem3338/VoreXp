@@ -1,9 +1,12 @@
+#Eklenecek: Çalıştırıcı değiştirebilecek
 import os
 import sys
+import locale
 import datetime
-import time
+import time as t
 import threading
 import json
+import importlib.util
 from pathlib import Path
 import getpass
 try:
@@ -15,6 +18,12 @@ import shutil
 from zipfile import ZipFile
 
 
+def have(com):
+  try:
+    com
+  except: return False
+
+  return True
 start=datetime.datetime.now()
 v_path=os.getcwd()+"/vore"
 class Tasks:
@@ -159,7 +168,7 @@ for x in range(len(kullanicilar_list)):
 
 
 
-vore_config={"runuser":"root","started":start,"platform":os.name,"vorepath":os.getcwd()+"/vore","commandspath": os.getcwd()+"/vore/commands/"}
+vore_config={"runuser":"root","started":start,"platform":os.name,"vorepath":os.getcwd()+"/vore","commandspath": os.getcwd()+"/vore/commands/","lang":locale.getdefaultlocale()[0]}
 
 sys.path.append(vore_config["commandspath"])
 try:
@@ -175,42 +184,77 @@ else:
 print(f"""Vore Xp 2022
 
 Hoşgeldin, {vore_config["runuser"]}""")
-
+os.chdir(vore_config["runuser"])
 while True:
   try:
     command=input(">")
   except KeyboardInterrupt:
     print("Exited")
     sys.exit()
+
+  try:
+    if command.split()[0] == "vsp":
+      try:
+        file=command.split()[1]
+      except IndexError:
+        print("argument <file> required")
+      if os.path.isfile(file):
+        file_content=open(file,"r",encoding="utf8").read()
+        line_count=file_content.count("\n")
+        if line_count==0:
+          line_count=1
+
+        for i in range(line_count):
+          satir=file_content.splitlines()
+          try:
+            if satir[i].split()[0]+".py" in os.listdir(vore_config["commandspath"]):
+              args=satir[i].split()[1::]
+              command_import=__import__(satir[i].split()[0])
+              command_import.vore_config=vore_config
+              try:
+                command_import.command(args)
+              except AttributeError:
+                Errors.error("006","ilgili komutta ana fonksiyon bulunamadı.")
+            else:
+              Errors.error("007",f"komut '{satir[i].split()[0]}' bulunamadı")
+          except IndexError:
+            pass
   
-  if command=="service-reset":
-    print("""VoreXp Servisi Sıfırlama Kaldırma Aracı
+    elif command=="service-reset":
+      print("""VoreXp Servisi Sıfırlama Kaldırma Aracı
 
 By işlemi Gerçekleştirmek istiyor musunuz? (Bütün Kullanıcılar ve komutlar silinecek)""")
-    b=onay("evet, vorexp sıfırlansın","hayır, vorexp sıfırlanmasın")
-    if b:
-      shutil.rmtree(v_path)
-      with open(v_path+"/config.json","r+",encoding="utf8") as f:
-        f.seek(0)
-        f.truncate()
-        config["ilk"]="ilk"
-        json.dump(config,f)
-      sys.exit()
-  if command=="":
-    pass
-  
-  try:
-    if command.split()[0]+".py" in os.listdir(vore_config["commandspath"]):
-      args=command.split()[1::]
-      command_import=__import__(command.split()[0])
-      command_import.vore_config=vore_config
-      try:
-        command_import.command(args)
-      except AttributeError:
-        Errors.error("006","ilgili komutta ana fonksiyon bulunamadı.")
+      b=onay("evet, vorexp sıfırlansın","hayır, vorexp sıfırlanmasın")
+      if b:
+        shutil.rmtree(v_path)
+        with open(v_path+"/config.json","r+",encoding="utf8") as f:
+          f.seek(0)
+          f.truncate()
+          config["ilk"]="ilk"
+          json.dump(config,f)
+        sys.exit()
+    elif command=="":
+      pass
     else:
-      Errors.error("007",f"komut '{command.split()[0]}' bulunamadı")
+      try:
+        if command.split()[0]+".py" in os.listdir(vore_config["commandspath"]):
+          args=command.split()[1::]
+          spec = importlib.util.spec_from_file_location("module.name", vore_config["commandspath"]+"/"+command.split()[0]+".py")
+          command_import = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(command_import)
+          #command_import=__import__(command.split()[0])
+          command_import.vore_config=vore_config
+          try:
+            command_import.command(args)
+          except KeyboardInterrupt:
+            pass
+          except AttributeError as e:
+            
+            Errors.error("006","ilgili komutta ana fonksiyon bulunamadı veya komutta bir hata oluştu tip:AttributeError")
+        else:
+          Errors.error("007",f"komut '{command.split()[0]}' bulunamadı")
+      except IndexError:
+        pass
   except IndexError:
     pass
-
 #Son satır XD
